@@ -1,6 +1,6 @@
 {
   "name": "react-native-otp-auto-verify",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "description": "react-native-otp-auto-verify is a React Native library for automatic OTP verification on Android and iOS. It uses the Google SMS Retriever API to detect OTP codes automatically without requiring the READ_SMS permission. The library is fully Play Store compliant, improves user login experience, supports TurboModule, and works with the React Native New Architecture",
   "keywords": [
     "react-native",
