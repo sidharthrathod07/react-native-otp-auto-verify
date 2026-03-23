@@ -82,7 +82,7 @@ Your backend **must** include the app hash at the **end** of the SMS.
 Requirements:
 
 - Message must be **≤ 140 bytes**
-- Must contain a **4–6 digit** OTP
+- Must contain a **4–8 digit** OTP
 - Must **end with** the app hash from `getHash()`
 
 Recommended format:
@@ -327,7 +327,7 @@ Use this on your OTP screen. It manages:
 
 | Property         | Type                  | Default | Description                              |
 | ---------------- | --------------------- | ------- | ---------------------------------------- |
-| `numberOfDigits` | `4 \| 5 \| 6`         | `6`     | OTP length to extract                    |
+| `numberOfDigits` | `4 \| 5 \| 6 \| 7 \| 8` | `6`     | OTP length to extract                    |
 | `hashCode`       | `string`              | `''`    | App hash (send to backend)               |
 | `otp`            | `string \| null`      | `null`  | Extracted OTP                            |
 | `sms`            | `string \| null`      | `null`  | Full SMS text                            |
@@ -348,7 +348,7 @@ Android only. Throws on iOS.
 
 Android only. Removes native listeners.
 
-### `extractOtp(sms: string, numberOfDigits?: 4 | 5 | 6): string | null`
+### `extractOtp(sms: string, numberOfDigits?: 4 | 5 | 6 | 7 | 8): string | null`
 
 Pure helper to extract the OTP from an SMS string.
 

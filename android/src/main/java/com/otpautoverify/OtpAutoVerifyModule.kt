@@ -100,18 +100,25 @@ class OtpAutoVerifyModule(reactContext: ReactApplicationContext) :
     }
 
     private fun unregisterReceiver() {
+        if (!isReceiverRegistered || smsReceiver == null) {
+            isListening = false
+            return
+        }
         val activity = currentActivity
-        if (isReceiverRegistered && activity != null && smsReceiver != null) {
-            try {
+        try {
+            if (activity != null) {
                 activity.unregisterReceiver(smsReceiver)
                 Log.d(TAG, "SMS receiver unregistered")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to unregister SMS receiver", e)
             }
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "Receiver already unregistered", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to unregister SMS receiver", e)
+        } finally {
             isReceiverRegistered = false
             smsReceiver = null
+            isListening = false
         }
-        isListening = false
     }
 
     override fun addListener(eventName: String) {

@@ -1,30 +1,33 @@
 import * as React from 'react';
-import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import { NativeEventEmitter, Platform } from 'react-native';
 import NativeOtpAutoVerify from './NativeOtpAutoVerify';
 
-const { OtpAutoVerify } = NativeModules;
 const eventEmitter =
-  Platform.OS === 'android' && OtpAutoVerify
-    ? new NativeEventEmitter(OtpAutoVerify)
+  Platform.OS === 'android' && NativeOtpAutoVerify
+    ? new NativeEventEmitter(NativeOtpAutoVerify)
     : null;
 
 const OTP_RECEIVED_EVENT =
   (NativeOtpAutoVerify.getConstants?.()?.OTP_RECEIVED_EVENT as string) ??
   'otpReceived';
 
-const TIMEOUT_MESSAGE = 'Timeout Error.';
+export const TIMEOUT_MESSAGE = 'Timeout Error.';
 const DEFAULT_DIGITS = 6;
 
-export type OtpDigits = 4 | 5 | 6;
+const MIN_OTP_DIGITS = 4;
+const MAX_OTP_DIGITS = 8;
 
-const OTP_REGEX: Record<OtpDigits, RegExp> = {
-  4: /\b(\d{4})\b/,
-  5: /\b(\d{5})\b/,
-  6: /\b(\d{6})\b/,
-};
+export type OtpDigits = 4 | 5 | 6 | 7 | 8;
+
+function getOtpRegex(digits: number): RegExp {
+  if (digits < MIN_OTP_DIGITS || digits > MAX_OTP_DIGITS) {
+    return new RegExp(`\\b(\\d{${DEFAULT_DIGITS}})\\b`);
+  }
+  return new RegExp(`\\b(\\d{${digits}})\\b`);
+}
 
 export interface UseOtpVerificationOptions {
-  /** Extract OTP with this many digits (4, 5, or 6). OTP is set when SMS is received. */
+  /** Extract OTP with this many digits (4–8). OTP is set when SMS is received. */
   numberOfDigits?: OtpDigits;
 }
 
@@ -50,8 +53,7 @@ export interface OtpListenerSubscription {
 }
 
 /**
- * Extracts a numeric OTP of 4, 5, or 6 digits from SMS text.
- * Only these lengths are supported (numberOfDigits: 4 | 5 | 6).
+ * Extracts a numeric OTP of 4–8 digits from SMS text.
  */
 export function extractOtp(
   sms: string,
@@ -60,7 +62,8 @@ export function extractOtp(
   if (!sms || typeof sms !== 'string') return null;
   const trimmed = sms.trim();
   if (!trimmed) return null;
-  const match = trimmed.match(OTP_REGEX[numberOfDigits]);
+  const regex = getOtpRegex(numberOfDigits);
+  const match = trimmed.match(regex);
   return match ? match[1]! : null;
 }
 
@@ -71,13 +74,18 @@ export async function getHash(): Promise<string[]> {
   return Array.from(arr);
 }
 
-/** Starts SMS Retriever and subscribes to OTP events. Returns subscription with remove(). */
+/** No-op subscription for platforms where SMS Retriever is not supported (e.g. iOS). */
+const NOOP_SUBSCRIPTION: OtpListenerSubscription = {
+  remove: () => {},
+};
+
+/** Starts SMS Retriever and subscribes to OTP events. Returns subscription with remove(). On iOS, returns no-op (call remove() safely). */
 export async function activateOtpListener(
   handler: (sms: string, extractedOtp?: string | null) => void,
   options?: { numberOfDigits?: OtpDigits }
 ): Promise<OtpListenerSubscription> {
   if (Platform.OS !== 'android' || !eventEmitter) {
-    throw new Error('SMS Retriever is only supported on Android.');
+    return NOOP_SUBSCRIPTION;
   }
 
   const numberOfDigits = options?.numberOfDigits ?? DEFAULT_DIGITS;
@@ -119,26 +127,35 @@ export function useOtpVerification(
   const [timeoutError, setTimeoutError] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
   const subscriptionRef = React.useRef<OtpListenerSubscription | null>(null);
+  const isStartingRef = React.useRef(false);
 
   const stopListening = React.useCallback(() => {
     subscriptionRef.current?.remove();
     subscriptionRef.current = null;
+    isStartingRef.current = false;
     removeListener();
   }, []);
 
   const startListening = React.useCallback(async () => {
     if (Platform.OS !== 'android') return;
+    if (isStartingRef.current) return;
+
+    isStartingRef.current = true;
+    subscriptionRef.current?.remove();
+    subscriptionRef.current = null;
     setOtp(null);
     setSms(null);
     setTimeoutError(false);
     setError(null);
+
     try {
-      const hashes = await getHash();
-      setHashCode(hashes[0] ?? '');
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    }
-    try {
+      try {
+        const hashes = await getHash();
+        setHashCode(hashes[0] ?? '');
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error(String(err)));
+      }
+
       const sub = await activateOtpListener(
         (smsText, extractedOtp) => {
           setSms(smsText);
@@ -156,6 +173,8 @@ export function useOtpVerification(
       const wrapped = new Error('Failed to start OTP listener', { cause: err });
       setError(wrapped);
       throw wrapped;
+    } finally {
+      isStartingRef.current = false;
     }
   }, [numberOfDigits]);
 
