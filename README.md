@@ -19,8 +19,14 @@ react-native-otp-auto-verify is a lightweight and secure React Native library fo
 
 **iOS**: Uses iOS Security Code AutoFill (manual tap required).
 
-...
+
 Designed for modern authentication workflows, this library is well-suited for fintech, banking, e-commerce, and other security-focused applications. It eliminates the need for manual OTP entry, improving both user experience and conversion rates.
+
+
+
+
+
+
 **Connect:** [GitHub](https://github.com/kailas-rathod/react-native-otp-auto-verify) · [npm](https://www.npmjs.com/package/react-native-otp-auto-verify) · [Issues](https://github.com/kailas-rathod/react-native-otp-auto-verify/issues) · [License](https://github.com/kailas-rathod/react-native-otp-auto-verify/blob/main/LICENSE)
 
 ---
